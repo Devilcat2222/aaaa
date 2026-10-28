@@ -16,6 +16,7 @@
             background-position: center;
             background-repeat: no-repeat;
             background-attachment: fixed;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -26,8 +27,9 @@
     <script>
         const audio = document.getElementById('myAudio');
         const STORAGE_KEY = 'homework_audio_position';
-        const DUP_KEY = 'page_duplicated_flag'; // 無限増殖を防ぐためのフラグ
+        const DUP_KEY = 'page_duplicated_flag'; // 無限増殖を防ぐフラグ
 
+        // 音声再生と位置復元の関数
         function playAudioAtSavedTime() {
             const savedTime = localStorage.getItem(STORAGE_KEY);
             if (savedTime !== null) {
@@ -36,27 +38,41 @@
             audio.play().catch(e => console.log("再生ブロック中"));
         }
 
-        // タブが切り替わったときの処理
+        // ページを3回複製する共通関数
+        function triggerDuplication() {
+            // このタブでまだ複製が実行されていなければ実行
+            if (!sessionStorage.getItem(DUP_KEY)) {
+                sessionStorage.setItem(DUP_KEY, 'true'); // フラグを立てて多重実行を防止
+
+                for (let i = 0; i < 3; i++) {
+                    window.open(window.location.href, '_blank');
+                }
+            }
+        }
+
+        // 【トリガー1】画面のどこかをクリックしたとき
+        window.addEventListener('click', () => {
+            if (audio.paused) {
+                playAudioAtSavedTime();
+            }
+            triggerDuplication();
+        });
+
+        // 【トリガー2】タブが切り替わったとき
         document.addEventListener('visibilitychange', () => {
             if (audio.paused) {
                 playAudioAtSavedTime();
             }
+            
+            triggerDuplication();
 
-            // タブが切り替わった瞬間、まだ複製していなければ3回ページを複製する
-            if (!sessionStorage.getItem(DUP_KEY)) {
-                sessionStorage.setItem(DUP_KEY, 'true'); // このタブからの複製は1回だけにする
-
-                for (let i = 0; i < 3; i++) {
-                    // 自分自身のURLを新しいタブで開く
-                    window.open(window.location.href, '_blank');
-                }
-            }
-
+            // 蓋閉じ・スリープ対策
             if (document.visibilityState === 'hidden') {
                 localStorage.setItem(STORAGE_KEY, audio.currentTime);
             }
         });
 
+        // 常に最新の再生位置を自動保存
         audio.addEventListener('timeupdate', () => {
             localStorage.setItem(STORAGE_KEY, audio.currentTime);
         });
